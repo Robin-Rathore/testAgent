@@ -1,0 +1,27 @@
+{
+  "name": "testagent",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "test": "node src/test",
+    "start": "node src/server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@langchain/core": "^0.3.40",
+    "@langchain/google-genai": "^0.1.9",
+    "@langchain/langgraph": "^0.2.49",
+    "@langchain/openai": "^0.4.4",
+    "@types/node": "^22.13.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^6.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "zod": "^3.24.2"
+  }
+}
