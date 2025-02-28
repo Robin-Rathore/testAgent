@@ -128,14 +128,14 @@ Zod schemas define structured data for:
 Sends emails with project information to a fixed recipient for security.
 
 **Features:**
-- Restricted to a single recipient (`rathorerobin03@gmail.com`)
+- Restricted to a single recipient (`robinsingh248142@gmail.com`)
 - Prevents duplicate emails in a session
 - Supports priority levels
 
 **Usage:**
 ```javascript
 await sendEmail({
-  to: "rathorerobin03@gmail.com",
+  to: "robinsingh248142@gmail.com",
   subject: "Project Proposal",
   body: "<h1>Project Proposal</h1><p>Details here...</p>",
   priority: "normal"
@@ -318,6 +318,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 
-Robin Rathore - rathorerobin03@gmail.com
+Robin Rathore - robinsingh248142@gmail.com
 Portfolio: https://robinrathore.dev
 LinkedIn: https://linkedin.com/in/robinrathore

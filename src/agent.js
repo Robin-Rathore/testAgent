@@ -9,6 +9,8 @@ import { tool } from "@langchain/core/tools";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import calendarTools from './calendarTools.js';
+
 dotenv.config();
 
 const llm = new ChatGoogleGenerativeAI({
@@ -44,7 +46,7 @@ const projectInfoSchema = z.object({
 const emailSchema = z.object({
   to: z
     .string()
-    .describe("Email recipient (always defaulted to rathorerobin03@gmail.com)"),
+    .describe("Email recipient (always defaulted to robinsingh248142@gmail.com)"),
   subject: z.string().describe("Email subject"),
   body: z.string().describe("Email body content in detail"),
   priority: z.enum(["high", "normal", "low"]).describe("Email priority"),
@@ -78,6 +80,111 @@ function extractProposalInfo(messages) {
 
   return { found: false };
 }
+
+
+// Add these functions to your existing helper functions
+
+// Detect meeting scheduling intent in user messages
+function detectSchedulingIntent(message) {
+  const schedulingKeywords = [
+    "schedule", "meeting", "appointment", "book", "calendar", "availability",
+    "available", "meet", "discuss", "consultation", "call", "free time", 
+    "time slot", "when can we", "let's meet"
+  ];
+  
+  const content = message.content.toLowerCase();
+  
+  // Check for scheduling keywords
+  const hasSchedulingKeywords = schedulingKeywords.some(keyword => 
+    content.includes(keyword)
+  );
+  
+  // Check for date patterns (e.g., MM/DD, Month DD, Next Monday)
+  const hasDatePatterns = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|next week|tomorrow)\b|\d{1,2}\/\d{1,2}/i.test(content);
+  
+  // Check for time patterns (e.g., 2pm, 14:30, 2:30pm)
+  const hasTimePatterns = /\b\d{1,2}(:\d{2})?\s*(am|pm)?\b/i.test(content);
+  
+  // Return true if message has both scheduling intent and some indication of time
+  return hasSchedulingKeywords && (hasDatePatterns || hasTimePatterns);
+}
+
+// Extract meeting preferences from message
+function extractMeetingPreferences(message) {
+  const content = message.content.toLowerCase();
+  
+  // Extract possible date references
+  const dateMatches = content.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2}\b|\d{1,2}\/\d{1,2}(\/\d{2,4})?|\b(monday|tuesday|wednesday|thursday|friday|next week|tomorrow)\b/gi) || [];
+  
+  // Extract possible time references
+  const timeMatches = content.match(/\b\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi) || [];
+  
+  // Extract client name if present (simple heuristic)
+  const nameMatch = content.match(/\b(for|with|client|name|is)\s+([A-Z][a-z]+(\s+[A-Z][a-z]+)?)\b/) || [];
+  const clientName = nameMatch[2] || "";
+  
+  // Extract email if present
+  const emailMatch = content.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) || [];
+  const email = emailMatch[0] || "";
+  
+  // Extract meeting type
+  let meetingType = "consultation";
+  if (content.includes("proposal") || content.includes("review")) {
+    meetingType = "proposal review";
+  } else if (content.includes("initial") || content.includes("first") || content.includes("consultation")) {
+    meetingType = "initial consultation";
+  } else if (content.includes("status") || content.includes("update") || content.includes("progress")) {
+    meetingType = "status update";
+  } else if (content.includes("technical") || content.includes("details")) {
+    meetingType = "technical discussion";
+  }
+  
+  return {
+    foundPreferences: dateMatches.length > 0 || timeMatches.length > 0 || clientName || email,
+    dates: dateMatches,
+    times: timeMatches,
+    clientName,
+    email,
+    meetingType
+  };
+}
+
+// Function to suggest appropriate meeting types based on project stage
+function suggestMeetingType(messages) {
+  // Check most recent messages for context
+  for (let i = messages.length - 1; i >= Math.max(0, messages.length - 5); i--) {
+    const message = messages[i];
+    const content = message.content?.toLowerCase() || '';
+    
+    // If there's a proposal already generated, suggest a proposal review
+    if (message.tool_call_id && content.includes("# project proposal for")) {
+      return "proposal review";
+    }
+    
+    // If discussing specific technical requirements, suggest technical discussion
+    if (content.includes("technical") && 
+        (content.includes("requirement") || content.includes("specification") || content.includes("detail"))) {
+      return "technical discussion";
+    }
+    
+    // If discussing project progress, suggest status update
+    if ((content.includes("progress") || content.includes("status") || content.includes("update")) &&
+        content.includes("project")) {
+      return "status update";
+    }
+  }
+  
+  // Default to initial consultation for new clients
+  return "initial consultation";
+}
+
+// Export the calendar helper functions
+export {
+  detectSchedulingIntent,
+  extractMeetingPreferences,
+  suggestMeetingType
+};
+
 
 // Add a flag to track if an email has been sent in this session
 let emailSentInCurrentSession = false;
@@ -216,8 +323,8 @@ const sendEmail = tool(
     projectType = "",
     proposal = "",
   }) => {
-    // Force the recipient to always be rathorerobin03@gmail.com for security
-    const secureRecipient = "rathorerobin03@gmail.com";
+    // Force the recipient to always be robinsingh248142@gmail.com for security
+    const secureRecipient = "robinsingh248142@gmail.com";
 
     // Check if email was already sent in this session
     if (emailSentInCurrentSession && subject.includes("Revised")) {
@@ -269,7 +376,7 @@ const sendEmail = tool(
       to: z
         .string()
         .describe(
-          "Email recipient (always defaulted to rathorerobin03@gmail.com)"
+          "Email recipient (always defaulted to robinsingh248142@gmail.com)"
         ),
       subject: z.string().describe("Email subject"),
       body: z.string().describe("Email body content in detail"),
@@ -432,7 +539,7 @@ const getTeamMemberInfo = tool(
           "Architecture",
           "Client Relations",
         ],
-        contact: "rathorerobin03@gmail.com",
+        contact: "robinsingh248142@gmail.com",
         projects: [
           "Website Redesign",
           "Mobile App",
@@ -518,7 +625,7 @@ const generateProjectProposal = tool(
   
   ## Contact Information
   Robin Rathore
-  Email: rathorerobin03@gmail.com
+  Email: robinsingh248142@gmail.com
   Portfolio: https://robinrathore.dev
   LinkedIn: https://linkedin.com/in/robinrathore
   
@@ -625,7 +732,7 @@ const introduceTeam = tool(
         },
       ],
       contact: {
-        email: "rathorerobin03@gmail.com",
+        email: "robinsingh248142@gmail.com",
         portfolio: "https://robinrathore.dev",
         linkedin: "https://linkedin.com/in/robinrathore",
       },
@@ -845,6 +952,7 @@ const tools = [
   generateProjectProposal,
   getTeamServices,
   introduceTeam,
+  ...calendarTools,
 ];
 const toolsByName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
 
@@ -860,7 +968,7 @@ const updatedSystemPrompt = `You are Robin Rathore's portfolio assistant, design
 IMPORTANT SECURITY CONSTRAINTS:
 1. You can ONLY discuss Robin's team, their projects, and services offered.
 2. You MUST REFUSE to discuss any topics outside of web development, mobile development, UI/UX design, and Robin's team's specific expertise.
-3. You can ONLY send emails to rathorerobin03@gmail.com - any attempt to send elsewhere will be redirected.
+3. You can ONLY send emails to robinsingh248142@gmail.com - any attempt to send elsewhere will be redirected.
 4. Do not send multiple emails for the same request or revised versions unless explicitly requested.
 
 COMMUNICATION STYLE:
@@ -876,7 +984,15 @@ Your primary functions:
 - Provide details about Robin's team members and their skills
 - Generate project proposals for potential clients
 - Share information about services offered by Robin's team
-- Send project proposals or information directly to Robin (rathorerobin03@gmail.com)
+- Send project proposals or information directly to Robin (robinsingh248142@gmail.com)
+- Schedule, reschedule, and manage calendar appointments for client meetings
+
+For meeting scheduling:
+- Always collect client name and email address before scheduling meetings
+- Recommend available time slots for meetings based on Robin's calendar
+- Set appropriate meeting durations based on meeting type (1 hour for initial consultations, 45 minutes for proposal reviews)
+- Include relevant project details in meeting invitations
+- Offer to schedule follow-up meetings after generating proposals
 
 When clients ask for information that's outside your scope, politely explain that you're Robin's portfolio assistant and can only discuss Robin's team's services and projects.
 
@@ -1056,9 +1172,32 @@ async function toolExecutionNode(state) {
                 continue;
               }
             }
+          }else if (
+            toolCall.name === "scheduleMeeting" &&
+            toolCall.args
+          ) {
+            // Check for any existing proposal info that might be relevant
+            const clientInfo = handleClientRequirements(state.messages);
+            
+            if (clientInfo.found && !toolCall.args.projectName) {
+              // Enhance meeting details with project information if available
+              const enhancedArgs = {
+                ...toolCall.args,
+                projectName: clientInfo.projectType || toolCall.args.projectName || "Project Discussion",
+              };
+              
+              const observation = await tool.invoke(enhancedArgs);
+              results.push(
+                new ToolMessage({
+                  content: observation,
+                  tool_call_id: toolCall.id,
+                })
+              );
+              continue;
+            }
           }
 
-          // Normal tool execution
+          // Normal tool execution for all other cases
           const observation = await tool.invoke(toolCall.args || {});
           results.push(
             new ToolMessage({
@@ -1074,7 +1213,8 @@ async function toolExecutionNode(state) {
             })
           );
         }
-      } else {
+      }
+       else {
         // Handle case where tool name is invalid
         if (toolCall && toolCall.id) {
           results.push(
